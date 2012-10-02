@@ -30,25 +30,24 @@ sentP :: P (Sent L.Text)
 sentP = uncurry Sent <$> (tag "s" *> getAttr "xml:id" </> nameP)
 
 nameP :: P (NE L.Text)
-nameP = (tag "seg" *> getAttr "xml:id") `join` \neID -> do
+nameP = (tag "seg" *> getAttr "xml:id") `join` \_neID -> do
     ne <- nameBodyP
-    ptrs <- some namePtrP
-        <|> failBad ("no targets specified for " ++ L.unpack neID)
-    return $ ne { neID = neID, ptrs = ptrs }
+    _ptrs <- some namePtrP
+         <|> failBad ("no targets specified for " ++ L.unpack _neID)
+    return $ ne { neID = _neID, ptrs = _ptrs }
 
 nameBodyP :: P (NE L.Text)
 nameBodyP = (tag "fs" *> hasAttr "type" "named") `joinR` do
-    deriv <- optional derivP
-    neType <- fSymP "type"
-    subType <- optional (fSymP "subtype")
-    orth <- fStrP "orth"
-    base <- (Left  <$> fStrP "base")
-        <|> (Right <$> fStrP "when")
-    cert <- certP
-    certComment <- optional (fStrP "comment")
-    return $ NE { neType = neType, subType = subType, orth = orth, base = base
-                , derived = deriv, cert = cert, certComment = certComment
-                , neID = "", ptrs = [] }    -- Should be supplied outside
+    _deriv   <- optional derivP
+    _neType  <- fSymP "type"
+    _subType <- optional (fSymP "subtype")
+    _orth    <- fStrP "orth"
+    _base    <- (Left  <$> fStrP "base") <|> (Right <$> fStrP "when")
+    _cert    <- certP
+    _certComment <- optional (fStrP "comment")
+    return $ NE { neType = _neType, subType = _subType, orth = _orth
+                , base = _base, derived = _deriv, cert = _cert
+                , certComment = _certComment, neID = "", ptrs = [] }
 
 derivP :: P (Deriv L.Text)
 derivP = fP "derived" `joinR` ( fsP "derivation" `joinR` do
