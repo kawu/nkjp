@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Parsing the NKJP named entity layer.
+
 module Text.NKJP.Named
 ( parseNamed
 , readNamed
@@ -91,6 +93,7 @@ fSymP x =
         p = cut (tag "symbol" *> getAttr "value")
     in  head <$> (checkName /> p)
 
+-- | Parse textual contents of the ann_named.xml file.
 parseNamed :: L.Text -> [Para L.Text]
 parseNamed = parseXml namedP
 

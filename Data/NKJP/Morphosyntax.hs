@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 
+-- | Data types for the morphosytnax layer of the NKJP corpus.
+
 module Data.NKJP.Morphosyntax
 ( Para (..)
 , Sent (..)
@@ -7,19 +9,19 @@ module Data.NKJP.Morphosyntax
 , Lex (..)
 ) where
 
--- | Paragraph.
+-- | A paragraph.
 data Para t = Para
     { paraID    :: t
     , sentences :: [Sent t] }
     deriving (Show, Functor)
 
--- | Sentence.
+-- | A sentence.
 data Sent t = Sent
     { sentID    :: t
     , segments  :: [Seg t] }
     deriving (Show, Functor)
 
--- | Segment.
+-- | A segment.
 data Seg t = Seg
     { segID     :: t 
     , orth      :: t
@@ -28,7 +30,7 @@ data Seg t = Seg
     , choice    :: (t, t) }
     deriving (Show, Functor)
 
--- | Lexciacal entry -- possible interpretation.
+-- | A lexciacal entry, potential interpretation of the segment.
 data Lex t = Lex
     { lexID     :: t
     , base      :: t

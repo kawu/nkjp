@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- | Data types for the named entities layer of the NKJP corpus.
+
 module Data.NKJP.Named
 ( Cert (..)
 , Ptr (..)
@@ -26,10 +28,10 @@ data Cert
 
 -- | A pointer.
 data Ptr t
-    -- | Of "#id" form.
+    -- | Of #id form.
     = Local
         { target    :: t }
-    -- | Of "loc#id" form.
+    -- | Of loc#id form.
     | Global
         { target    :: t
         , location  :: t }

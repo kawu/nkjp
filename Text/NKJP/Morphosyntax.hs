@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- | Parsing the NKJP morphosyntax layer.
+
 module Text.NKJP.Morphosyntax
 ( parseMorph
 , readMorph
@@ -70,6 +72,7 @@ fSymP x =
         p = cut (tag "symbol" *> getAttr "value")
     in  head <$> (checkName /> p)
 
+-- | Parse textual contents of the ann_morphosyntax.xml file.
 parseMorph :: L.Text -> [Para L.Text]
 parseMorph = parseXml morphP
 
