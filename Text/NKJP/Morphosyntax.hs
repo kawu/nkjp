@@ -4,6 +4,7 @@ module Text.NKJP.Morphosyntax
 ( parseMorph
 , readMorph
 , readCorpus
+, module Data.NKJP.Morphosyntax
 ) where
 
 import System.FilePath (takeBaseName)

@@ -8,7 +8,14 @@ module Data.NKJP.Named
 , Para (..)
 , Sent (..)
 , NE (..)
+, mkForest
 ) where
+
+import Data.Named.Graph (toForest, mkGraph)
+import Data.Named.Tree (mapTrees)
+import Data.NKJP.Morphosyntax (Seg, segID)
+import qualified Data.Map as M
+import qualified Data.Tree as T
 
 -- | A certainty of an annotator.
 data Cert
@@ -73,3 +80,27 @@ instance Functor NE where
         , cert          = cert
         , certComment   = fmap f certComment
         , ptrs          = map (fmap f) ptrs }
+
+-- | Make NE forest from a segment list and a list of NEs, both lists
+-- corresponding to the same sentence.
+mkForest :: Ord t => [Seg t] -> [NE t] -> T.Forest (Either (NE t) (Seg t))
+mkForest xs ns =
+    mapTrees decode (toForest graph)
+  where
+    -- Position of segment ID
+    pos  = (M.!) $ M.fromList (zip (map segID xs) [0..])
+    -- Segment on the given position
+    word = (M.!) $ M.fromList (zip [0..] xs)
+    -- NE with given ID
+    name = (M.!) $ M.fromList [(neID ne, ne) | ne <- ns]
+
+    graph  = mkGraph (0, length xs - 1)
+        [ ( neID ne
+          , map resolve (ptrs ne) )
+        | ne <- ns ]
+
+    resolve (Local ptr)    = Left ptr
+    resolve (Global ptr _) = Right (pos ptr)
+
+    decode (Left neID) = Left (name neID)
+    decode (Right k)   = Right (word k)

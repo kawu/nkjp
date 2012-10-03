@@ -18,12 +18,14 @@ build-type:         Simple
 library
     build-depends:
         base >= 4 && < 5
+      , containers
       , text
       , polysoup
       , bytestring
       , zlib
       , tar
       , filepath
+      , data-named
 
     exposed-modules:
         Data.NKJP.Morphosyntax

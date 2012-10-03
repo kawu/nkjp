@@ -4,6 +4,7 @@ module Text.NKJP.Named
 ( parseNamed
 , readNamed
 , readCorpus
+, module Data.NKJP.Named
 ) where
 
 import System.FilePath (takeBaseName)
@@ -66,7 +67,7 @@ certP =
     mkCert "high"   = High
     mkCert "medium" = Medium
     mkCert "low"    = Low
-    mkCert _        = Medium    -- ^ It should not happen!
+    mkCert _        = Medium    -- It should not happen!
 
 namePtrP :: P (Ptr L.Text)
 namePtrP = cut (tag "ptr" *> getAttr "target") >>= \x -> return $
@@ -79,7 +80,7 @@ namePtrP = cut (tag "ptr" *> getAttr "target") >>= \x -> return $
 fStrP :: L.Text -> P L.Text
 fStrP x =
     let checkName = tag "f" *> hasAttr "name" x
-        -- | Body sometimes is empty.
+        -- Body sometimes is empty.
         safeHead [] = ""
         safeHead xs = head xs
     in  safeHead <$> (checkName #> tag "string" /> text)
