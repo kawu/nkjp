@@ -23,7 +23,7 @@ library
       , polysoup
       , bytestring
       , zlib
-      , tar
+      , tar >= 0.4 && < 0.5
       , filepath
       , data-named
 

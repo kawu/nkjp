@@ -108,7 +108,7 @@ readCorpus tarPath = do
 
 readTar :: FilePath -> IO [Tar.Entry]
 readTar tar
-    =  Tar.foldEntries (:) [] error
+    =  Tar.foldEntries (:) [] (error . show)
     .  Tar.read . GZip.decompress
    <$> BS.readFile tar
 
