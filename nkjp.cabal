@@ -1,5 +1,5 @@
 name:               nkjp
-version:            0.1.1
+version:            0.2
 synopsis:           Manipulating the National Corpus of Polish (NKJP)
 description:
     The library provides parsing and printing utilities for the
@@ -32,6 +32,9 @@ library
       , Data.NKJP.Named
       , Text.NKJP.Morphosyntax
       , Text.NKJP.Named
+
+    other-modules:
+        Text.NKJP.Tar
 
     ghc-options: -Wall
 

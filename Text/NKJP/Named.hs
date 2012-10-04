@@ -9,16 +9,12 @@ module Text.NKJP.Named
 , module Data.NKJP.Named
 ) where
 
-import System.FilePath (takeBaseName)
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
-import qualified Data.Text.Lazy.Encoding as L
-import qualified Data.ByteString.Lazy as BS
-import qualified Codec.Compression.GZip as GZip
-import qualified Codec.Archive.Tar as Tar
 
 import Text.XML.PolySoup
 import Data.NKJP.Named
+import qualified Text.NKJP.Tar as Tar
 
 -- | TEI NKJP ann_morphosyntax parser.
 type P a = XmlParser L.Text a
@@ -101,23 +97,8 @@ parseNamed = parseXml namedP
 readNamed :: FilePath -> IO [Para L.Text]
 readNamed namedPath = parseNamed <$> L.readFile namedPath
 
--- | Parse the NCP .tar.gz file.
-readCorpus :: FilePath -> IO [(FilePath, [Para L.Text])]
-readCorpus tarPath = do
-    map parseEntry . withBase "ann_named" <$> readTar tarPath
-
-readTar :: FilePath -> IO [Tar.Entry]
-readTar tar
-    =  Tar.foldEntries (:) [] (error . show)
-    .  Tar.read . GZip.decompress
-   <$> BS.readFile tar
-
-parseEntry :: Tar.Entry -> (FilePath, [Para L.Text])
-parseEntry entry =
-    (Tar.entryPath entry, parseNamed content)
-  where
-    (Tar.NormalFile binary _) = Tar.entryContent entry
-    content = L.decodeUtf8 binary
-
-withBase :: String -> [Tar.Entry] -> [Tar.Entry]
-withBase baseName = filter ((==baseName) . takeBaseName . Tar.entryPath)
+-- | Parse all ann_named.xml files from the NCP .tar.gz file.
+-- Directories will be processed in an ascending order (with
+-- respect to directory names).
+readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
+readCorpus = Tar.readCorpus "ann_named" parseNamed
