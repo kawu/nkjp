@@ -105,7 +105,7 @@ instance Functor NE where
 mkForest :: Ord t => [Mx.Seg t] -> [NE t]
          -> T.Forest (Either (NE t) (Mx.Seg t))
 mkForest xs ns =
-    Nd.mapTrees decode (Nd.toForest graph)
+    Nd.mapForest decode (Nd.toForest graph)
   where
     -- Position of segment ID
     pos  = (M.!) $ M.fromList (zip (map Mx.segID xs) [0..])

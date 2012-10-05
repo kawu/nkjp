@@ -25,7 +25,7 @@ library
       , zlib
       , tar >= 0.4 && < 0.5
       , filepath
-      , data-named >= 0.3 && < 0.4
+      , data-named >= 0.4 && < 0.5
 
     exposed-modules:
         Text.NKJP.Morphosyntax
@@ -39,3 +39,8 @@ library
 source-repository head
     type: git
     location: git://github.com/kawu/nkjp.git
+
+executable named2enamex
+  hs-source-dirs: ., tools
+  main-is: named2enamex.hs
+  ghc-options: -Wall -O2
