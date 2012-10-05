@@ -1,12 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 -- | Parsing the NKJP morphosyntax layer.
 
 module Text.NKJP.Morphosyntax
-( parseMorph
+(
+-- * Data types
+  Para (..)
+, Sent (..)
+, Seg (..)
+, Lex (..)
+
+-- * Parsing
+, parseMorph
 , readMorph
 , readCorpus
-, module Data.NKJP.Morphosyntax
 ) where
 
 import Data.Maybe (isJust)
@@ -14,8 +22,36 @@ import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
 
 import Text.XML.PolySoup
-import Data.NKJP.Morphosyntax
 import qualified Text.NKJP.Tar as Tar
+
+-- | A paragraph.
+data Para t = Para
+    { paraID    :: t
+    , sentences :: [Sent t] }
+    deriving (Show, Functor)
+
+-- | A sentence.
+data Sent t = Sent
+    { sentID    :: t
+    , segments  :: [Seg t] }
+    deriving (Show, Functor)
+
+-- | A segment.
+data Seg t = Seg
+    { segID     :: t 
+    , orth      :: t
+    , nps       :: Bool
+    , lexs      :: [Lex t]
+    , choice    :: (t, t) }
+    deriving (Show, Functor)
+
+-- | A lexciacal entry, potential interpretation of the segment.
+data Lex t = Lex
+    { lexID     :: t
+    , base      :: t
+    , ctag      :: t
+    , msds      :: [(t, t)] }
+    deriving (Show, Functor)
 
 -- | TEI NKJP ann_morphosyntax parser.
 type P a = XmlParser L.Text a

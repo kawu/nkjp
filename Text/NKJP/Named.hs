@@ -1,20 +1,129 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- | Parsing the NKJP named entity layer.
 
 module Text.NKJP.Named
-( parseNamed
+(
+-- * Data types
+  Cert (..)
+, Ptr (..)
+, Deriv (..)
+, Para (..)
+, Sent (..)
+, NE (..)
+
+-- * Parsing
+, parseNamed
 , readNamed
 , readCorpus
-, module Data.NKJP.Named
+, readTrees
+
+-- * Utilities
+, mkForest
 ) where
 
+import Data.Maybe (mapMaybe)
+import qualified Data.Map as M
+import qualified Data.Tree as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
 
 import Text.XML.PolySoup
-import Data.NKJP.Named
+import qualified Data.Named.Graph as Nd
+import qualified Data.Named.Tree as Nd
 import qualified Text.NKJP.Tar as Tar
+import qualified Text.NKJP.Morphosyntax as Mx
+
+-- | A certainty of an annotator.
+data Cert
+    = High
+    | Medium
+    | Low
+    deriving (Show)
+
+-- | A pointer.
+data Ptr t
+    -- | Of #id form.
+    = Local
+        { target    :: t }
+    -- | Of loc#id form.
+    | Global
+        { target    :: t
+        , location  :: t }
+    deriving (Show, Functor)
+
+-- | A derivation structure.
+data Deriv t = Deriv
+    { derivType :: t 
+    , derivFrom :: t }
+    deriving (Show, Functor)
+
+-- | A paragraph.
+data Para t = Para
+    { paraID    :: t
+    , sentences :: [Sent t] }
+    deriving (Show, Functor)
+
+-- | A sentence.
+data Sent t = Sent
+    { sentID    :: t
+    , names     :: [NE t] }
+    deriving (Show, Functor)
+
+-- | A segment element in a file. 
+data NE t = NE
+    { neID          :: t
+    , derived       :: Maybe (Deriv t)
+    , neType        :: t
+    , subType       :: Maybe t
+    , orth          :: t
+    -- | Left base or Right when.
+    , base          :: Either t t
+    , cert          :: Cert
+    , certComment   :: Maybe t
+    , ptrs          :: [Ptr t] }
+    deriving (Show)
+
+instance Functor NE where
+    fmap f NE{..} = NE
+        { neID          = f neID
+        , derived       = fmap (fmap f) derived
+        , neType        = f neType
+        , subType       = fmap f subType
+        , orth          = f orth
+        , base          = case base of
+            Left x  -> Left  (f x)
+            Right x -> Right (f x)
+        , cert          = cert
+        , certComment   = fmap f certComment
+        , ptrs          = map (fmap f) ptrs }
+
+-- | Make NE forest from a segment list and a list of NEs, both lists
+-- corresponding to the same sentence.
+mkForest :: Ord t => [Mx.Seg t] -> [NE t]
+         -> T.Forest (Either (NE t) (Mx.Seg t))
+mkForest xs ns =
+    Nd.mapTrees decode (Nd.toForest graph)
+  where
+    -- Position of segment ID
+    pos  = (M.!) $ M.fromList (zip (map Mx.segID xs) [0..])
+    -- Segment on the given position
+    word = (M.!) $ M.fromList (zip [0..] xs)
+    -- NE with given ID
+    name = (M.!) $ M.fromList [(neID ne, ne) | ne <- ns]
+
+    graph  = Nd.mkGraph (0, length xs - 1)
+        [ ( neID ne
+          , map resolve (ptrs ne) )
+        | ne <- ns ]
+
+    resolve (Local ptr)    = Left ptr
+    resolve (Global ptr _) = Right (pos ptr)
+
+    decode (Left neID) = Left (name neID)
+    decode (Right k)   = Right (word k)
 
 -- | TEI NKJP ann_morphosyntax parser.
 type P a = XmlParser L.Text a
@@ -102,3 +211,23 @@ readNamed namedPath = parseNamed <$> L.readFile namedPath
 -- respect to directory names).
 readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus = Tar.readCorpus "ann_named" parseNamed
+
+-- | Parse the NCP .tar.gz corpus, extract all NEs and translate them
+-- to the tree form using the 'mkForest' function. 
+readTrees :: FilePath -> IO [T.Forest (Either (NE L.Text) (Mx.Seg L.Text))]
+readTrees path = do
+    morph <- Mx.readCorpus path
+    named <- readCorpus path
+    return . concat $ map toTrees (sync morph named)
+  where
+    toTrees (_, xs, ys) = map toForest $ zip
+        (concatMap Mx.sentences xs)
+        (concatMap sentences ys)
+    toForest (x, y) = mkForest (Mx.segments x) (names y)
+
+sync :: [(FilePath, Maybe a)] -> [(FilePath, Maybe b)] -> [(FilePath, a, b)]
+sync as bs =
+    mapMaybe (uncurry just) (zip as bs)
+  where
+    just (dir, Just x) (_, Just y) = Just (dir, x, y)
+    just _ _ = Nothing
