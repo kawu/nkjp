@@ -207,8 +207,6 @@ readNamed :: FilePath -> IO [Para L.Text]
 readNamed namedPath = parseNamed <$> L.readFile namedPath
 
 -- | Parse all ann_named.xml files from the NCP .tar.gz file.
--- Directories will be processed in an ascending order (with
--- respect to directory names).
 readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus = Tar.readCorpus "ann_named" parseNamed
 

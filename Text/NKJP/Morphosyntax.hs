@@ -113,7 +113,5 @@ readMorph :: FilePath -> IO [Para L.Text]
 readMorph morphPath = parseMorph <$> L.readFile morphPath
 
 -- | Parse all ann_morphosyntax.xml files from the NCP .tar.gz file.
--- Directories will be processed in an ascending order (with
--- respect to directory names).
 readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus = Tar.readCorpus "ann_morphosyntax" parseMorph
