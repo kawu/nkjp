@@ -18,12 +18,17 @@ neType ne = L.toStrict . L.intercalate "." . catMaybes . map ($ ne) $
     , Ne.subType
     , Ne.derived >=> return . Ne.derivType ]
 
-orth :: Mx.Seg L.Text -> T.Text
-orth = L.toStrict . Mx.orth
+orth :: [Mx.Seg L.Text] -> T.Text
+orth = L.toStrict . L.concat . map Mx.orth
 
 main :: IO ()
 main = do
     [teiPath] <- getArgs
     fs <- Ne.readTrees teiPath
     forM_ fs $ \ts ->
-        L.putStrLn . showForest . mapForest (onEither neType orth) $ ts
+        L.putStrLn . showForest . prepare $ ts
+  where
+    prepare
+        = mapForest (onEither neType orth)
+        . groupForestLeaves sndNps
+    sndNps _ seg = Mx.nps seg

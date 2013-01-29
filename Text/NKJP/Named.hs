@@ -211,7 +211,7 @@ readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus = Tar.readCorpus "ann_named" parseNamed
 
 -- | Parse the NCP .tar.gz corpus, extract all NEs and translate them
--- to the tree form using the 'mkForest' function. 
+-- to the tree form using the 'mkForest' function.
 readTrees :: FilePath -> IO [T.Forest (Either (NE L.Text) (Mx.Seg L.Text))]
 readTrees path = do
     morph <- Mx.readCorpus path
