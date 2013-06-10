@@ -1,5 +1,5 @@
 name:               nkjp
-version:            0.3
+version:            0.3.1
 synopsis:           Manipulating the National Corpus of Polish (NKJP)
 description:
     The library provides parsing and printing utilities for the
@@ -43,4 +43,9 @@ source-repository head
 executable named2enamex
   hs-source-dirs: ., tools
   main-is: named2enamex.hs
+  ghc-options: -Wall -O2
+
+executable nkjp2text
+  hs-source-dirs: ., tools
+  main-is: nkjp2text.hs
   ghc-options: -Wall -O2
