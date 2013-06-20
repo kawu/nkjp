@@ -80,8 +80,8 @@ data NE t = NE
     , subType       :: Maybe t
     , orth          :: t
     -- | Left base or Right when.
-    , base          :: Either t t
-    , cert          :: Cert
+    , base          :: Maybe (Either t t)
+    , cert          :: Maybe Cert
     , certComment   :: Maybe t
     , ptrs          :: [Ptr t] }
     deriving (Show)
@@ -93,7 +93,7 @@ instance Functor NE where
         , neType        = f neType
         , subType       = fmap f subType
         , orth          = f orth
-        , base          = case base of
+        , base          = flip fmap base $ \base' -> case base' of
             Left x  -> Left  (f x)
             Right x -> Right (f x)
         , cert          = cert
@@ -148,10 +148,11 @@ nameBodyP :: P (NE L.Text)
 nameBodyP = (tag "fs" *> hasAttr "type" "named") `joinR` do
     _deriv   <- optional derivP
     _neType  <- fSymP "type"
-    _subType <- optional (fSymP "subtype")
+    _subType <- optional $ fSymP "subtype"
     _orth    <- fStrP "orth"
-    _base    <- (Left  <$> fStrP "base") <|> (Right <$> fStrP "when")
-    _cert    <- certP
+    _base    <- optional $ (Left  <$> fStrP "base")
+                       <|> (Right <$> fStrP "when")
+    _cert    <- optional certP
     _certComment <- optional (fStrP "comment")
     return $ NE { neType = _neType, subType = _subType, orth = _orth
                 , base = _base, derived = _deriv, cert = _cert

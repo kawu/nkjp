@@ -1,5 +1,5 @@
 name:               nkjp
-version:            0.3.1
+version:            0.4.0
 synopsis:           Manipulating the National Corpus of Polish (NKJP)
 description:
     The library provides parsing and printing utilities for the
