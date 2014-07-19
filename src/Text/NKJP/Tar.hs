@@ -8,14 +8,15 @@ import Data.List (groupBy, find)
 import Data.Function (on)
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Encoding as L
-import qualified Codec.Compression.GZip as GZip
+-- import qualified Codec.Compression.GZip as GZip
+import qualified Codec.Compression.BZip as BZip
 import qualified Codec.Archive.Tar as Tar
 import qualified Data.ByteString.Lazy as BS
 
 readTar :: FilePath -> IO [Tar.Entry]
 readTar tar
     =  Tar.foldEntries (:) [] (error . show)
-    .  Tar.read . GZip.decompress
+    .  Tar.read . BZip.decompress
    <$> BS.readFile tar
 
 withBase :: String -> [Tar.Entry] -> Maybe Tar.Entry

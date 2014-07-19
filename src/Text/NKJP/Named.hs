@@ -24,15 +24,21 @@ module Text.NKJP.Named
 , mkForest
 ) where
 
-import Data.Maybe (mapMaybe)
+import           Control.Applicative
+import           Control.Monad (when)
+import           Data.Maybe (mapMaybe)
+import qualified Data.Foldable as F
 import qualified Data.Map as M
 import qualified Data.Tree as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
 
-import Text.XML.PolySoup
+import qualified Text.HTML.TagSoup as TagSoup
+import           Text.XML.PolySoup hiding (P, Q)
 import qualified Data.Named.Graph as Nd
 import qualified Data.Named.Tree as Nd
+
+import           Text.NKJP.Utils
 import qualified Text.NKJP.Tar as Tar
 import qualified Text.NKJP.Morphosyntax as Mx
 
@@ -125,93 +131,156 @@ mkForest xs ns =
     decode (Left neID) = Left (name neID)
     decode (Right k)   = Right (word k)
 
--- | TEI NKJP ann_morphosyntax parser.
-type P a = XmlParser L.Text a
-
 namedP :: P [Para L.Text]
-namedP = true //> paraP
+namedP = concat <$> every' namedQ
 
-paraP :: P (Para L.Text)
-paraP = uncurry Para <$> (tag "p" *> getAttr "xml:id" </> sentP)
+namedQ :: Q [Para L.Text]
+namedQ = true //> paraQ
 
-sentP :: P (Sent L.Text)
-sentP = uncurry Sent <$> (tag "s" *> getAttr "xml:id" </> nameP)
+paraQ :: Q (Para L.Text)
+paraQ = uncurry Para <$> (named "p" *> attr "xml:id" </> sentQ)
 
-nameP :: P (NE L.Text)
-nameP = (tag "seg" *> getAttr "xml:id") `join` \_neID -> do
-    ne <- nameBodyP
-    _ptrs <- some namePtrP
-         <|> failBad ("no targets specified for " ++ L.unpack _neID)
+sentQ :: Q (Sent L.Text)
+sentQ = uncurry Sent <$> (named "s" *> attr "xml:id" </> nameQ)
+
+nameQ :: Q (NE L.Text)
+nameQ = (named "seg" *> attr "xml:id") `join` \_neID -> do
+    ne <- first $ nameBodyQ
+    -- TODO!!!!!!!!!!!!!!!  Q -> P !!!!!!!!!!!!
+    _ptrs <- every' namePtrQ
+    when (null _ptrs) $
+        fail ("no targets specified for " ++ L.unpack _neID)
+--     _ptrs <- some namePtrQ
+--          <|> fail ("no targets specified for " ++ L.unpack _neID)
     return $ ne { neID = _neID, ptrs = _ptrs }
 
-nameBodyP :: P (NE L.Text)
-nameBodyP = (tag "fs" *> hasAttr "type" "named") `joinR` do
-    _deriv   <- optional derivP
-    _neType  <- fSymP "type"
-    _subType <- optional $ fSymP "subtype"
-    _orth    <- fStrP "orth"
-    _base    <- optional $ (Left  <$> fStrP "base")
-                       <|> (Right <$> fStrP "when")
-    _cert    <- optional certP
-    _certComment <- optional (fStrP "comment")
+nameBodyQ :: Q (NE L.Text)
+nameBodyQ = (named "fs" *> hasAttrVal "type" "named") `joinR` do
+    _deriv   <- optional $ first derivQ
+    _neType  <- first $ fSymQ "type"
+    _subType <- optional $ first $ fSymQ "subtype"
+    _orth    <- first $ fStrQ "orth"
+    _base    <- optional $ first $
+            (Left  <$> fStrQ "base")
+        <|> (Right <$> fStrQ "when")
+    _cert    <- optional $ first certQ
+    _certComment <- optional $ first $ fStrQ "comment"
     return $ NE { neType = _neType, subType = _subType, orth = _orth
                 , base = _base, derived = _deriv, cert = _cert
                 , certComment = _certComment, neID = "", ptrs = [] }
 
-derivP :: P (Deriv L.Text)
-derivP = fP "derived" `joinR` ( fsP "derivation" `joinR` do
-    Deriv <$> fSymP "derivType" <*> fStrP "derivedFrom" )
-    
-fP :: L.Text -> TagPred L.Text ()
-fP x  = tag "f"  *> hasAttr "name" x
+derivQ :: Q (Deriv L.Text)
+derivQ = fQ "derived" `joinR` ( first $ fsQ "derivation" `joinR` do
+    Deriv <$> first (fSymQ "derivType")
+          <*> first (fStrQ "derivedFrom") )
+  where
+    fQ x  = named "f" *> hasAttrVal "name" x
+    fsQ x = named "fs" *> hasAttrVal "type" x
 
-fsP :: L.Text -> TagPred L.Text ()
-fsP x = tag "fs" *> hasAttr "type" x
-
-certP :: P Cert
-certP =
-    mkCert <$> fSymP "certainty"
+certQ :: Q Cert
+certQ =
+    mkCert <$> fSymQ "certainty"
   where
     mkCert "high"   = High
     mkCert "medium" = Medium
     mkCert "low"    = Low
     mkCert _        = Medium    -- It should not happen!
 
-namePtrP :: P (Ptr L.Text)
-namePtrP = cut (tag "ptr" *> getAttr "target") >>= \x -> return $
-    case L.break (=='#') x of
+namePtrQ :: Q (Ptr L.Text)
+namePtrQ =
+    mkPtr <$> node (named "ptr" *> attr "target")
+  where
+    mkPtr x = case L.break (=='#') x of
         (ptr, "")   -> Local ptr
         (loc, ptr)  -> Global
             { location = loc
             , target = (L.tail ptr) }
 
-fStrP :: L.Text -> P L.Text
-fStrP x =
-    let checkName = tag "f" *> hasAttr "name" x
-        -- Body sometimes is empty.
-        safeHead [] = ""
-        safeHead xs = head xs
-    in  safeHead <$> (checkName #> tag "string" /> text)
+-----------------------------------
+-- BACKUP
+-----------------------------------
+--
+-- -- | TEI NKJP ann_morphosyntax parser.
+-- type P a = XmlParser L.Text a
+-- 
+-- namedP :: P [Para L.Text]
+-- namedP = true //> paraP
+-- 
+-- paraP :: P (Para L.Text)
+-- paraP = uncurry Para <$> (tag "p" *> getAttr "xml:id" </> sentP)
+-- 
+-- sentP :: P (Sent L.Text)
+-- sentP = uncurry Sent <$> (tag "s" *> getAttr "xml:id" </> nameP)
+-- 
+-- nameP :: P (NE L.Text)
+-- nameP = (tag "seg" *> getAttr "xml:id") `join` \_neID -> do
+--     ne <- nameBodyP
+--     _ptrs <- some namePtrP
+--          <|> failBad ("no targets specified for " ++ L.unpack _neID)
+--     return $ ne { neID = _neID, ptrs = _ptrs }
+-- 
+-- nameBodyP :: P (NE L.Text)
+-- nameBodyP = (tag "fs" *> hasAttr "type" "named") `joinR` do
+--     _deriv   <- optional derivP
+--     _neType  <- fSymP "type"
+--     _subType <- optional $ fSymP "subtype"
+--     _orth    <- fStrP "orth"
+--     _base    <- optional $ (Left  <$> fStrP "base")
+--                        <|> (Right <$> fStrP "when")
+--     _cert    <- optional certP
+--     _certComment <- optional (fStrP "comment")
+--     return $ NE { neType = _neType, subType = _subType, orth = _orth
+--                 , base = _base, derived = _deriv, cert = _cert
+--                 , certComment = _certComment, neID = "", ptrs = [] }
+-- 
+-- derivP :: P (Deriv L.Text)
+-- derivP = fP "derived" `joinR` ( fsP "derivation" `joinR` do
+--     Deriv <$> fSymP "derivType" <*> fStrP "derivedFrom" )
+--     
+-- fP :: L.Text -> TagPred L.Text ()
+-- fP x  = tag "f"  *> hasAttr "name" x
+-- 
+-- fsP :: L.Text -> TagPred L.Text ()
+-- fsP x = tag "fs" *> hasAttr "type" x
+-- 
+-- certP :: P Cert
+-- certP =
+--     mkCert <$> fSymP "certainty"
+--   where
+--     mkCert "high"   = High
+--     mkCert "medium" = Medium
+--     mkCert "low"    = Low
+--     mkCert _        = Medium    -- It should not happen!
+-- 
+-- namePtrP :: P (Ptr L.Text)
+-- namePtrP = cut (tag "ptr" *> getAttr "target") >>= \x -> return $
+--     case L.break (=='#') x of
+--         (ptr, "")   -> Local ptr
+--         (loc, ptr)  -> Global
+--             { location = loc
+--             , target = (L.tail ptr) }
+-- 
 
-fSymP :: L.Text -> P L.Text
-fSymP x =
-    let checkName = tag "f" *> hasAttr "name" x
-        p = cut (tag "symbol" *> getAttr "value")
-    in  head <$> (checkName /> p)
+
+-----------------------------------
+-- END BACKUP
+-----------------------------------
+
 
 -- | Parse textual contents of the ann_named.xml file.
 parseNamed :: L.Text -> [Para L.Text]
-parseNamed = parseXml namedP
+parseNamed = -- parseXml namedP
+    F.concat . evalP namedP . parseForest . TagSoup.parseTags
 
 -- | Parse the stand-alone ann_named.xml file.
 readNamed :: FilePath -> IO [Para L.Text]
 readNamed namedPath = parseNamed <$> L.readFile namedPath
 
--- | Parse all ann_named.xml files from the NCP .tar.gz file.
+-- | Parse all ann_named.xml files from the NCP .tar.bz2 file.
 readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus = Tar.readCorpus "ann_named" parseNamed
 
--- | Parse the NCP .tar.gz corpus, extract all NEs and translate them
+-- | Parse the NCP .tar.bz2 corpus, extract all NEs and translate them
 -- to the tree form using the 'mkForest' function.
 readTrees :: FilePath -> IO [T.Forest (Either (NE L.Text) (Mx.Seg L.Text))]
 readTrees path = do
