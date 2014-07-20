@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import           Control.Applicative
 import           Control.Monad (forM_)
 import           System.Environment (getArgs)
 import           Data.Foldable (foldMap)
@@ -12,7 +13,7 @@ import qualified Text.NKJP.Morphosyntax as Mx
 main :: IO ()
 main = do
     [teiPath] <- getArgs
-    fs <- Ne.readTrees teiPath
+    fs <- concat <$> Ne.readTrees teiPath
     forM_ fs $ \ts ->
         L.putStrLn . L.strip . showLeaves . getLeaves $ ts
   where

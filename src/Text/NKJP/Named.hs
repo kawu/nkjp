@@ -282,11 +282,13 @@ readCorpus = Tar.readCorpus "ann_named" parseNamed
 
 -- | Parse the NCP .tar.bz2 corpus, extract all NEs and translate them
 -- to the tree form using the 'mkForest' function.
-readTrees :: FilePath -> IO [T.Forest (Either (NE L.Text) (Mx.Seg L.Text))]
+--
+-- Division into paragraphas is preserved.
+readTrees :: FilePath -> IO [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
 readTrees path = do
     morph <- Mx.readCorpus path
     named <- readCorpus path
-    return . concat $ map toTrees (sync morph named)
+    return $ map toTrees (sync morph named)
   where
     toTrees (_, xs, ys) = map toForest $ zip
         (concatMap Mx.sentences xs)
