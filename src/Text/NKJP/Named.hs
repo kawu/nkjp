@@ -51,10 +51,10 @@ data Cert
 
 -- | A pointer.
 data Ptr t
-    -- | Of #id form.
+    -- | Of #target form.
     = Local
         { target    :: t }
-    -- | Of loc#id form.
+    -- | Of location#target form.
     | Global
         { target    :: t
         , location  :: t }
