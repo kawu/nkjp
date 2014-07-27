@@ -13,7 +13,7 @@ import qualified Text.NKJP.Morphosyntax as Mx
 main :: IO ()
 main = do
     [teiPath] <- getArgs
-    fs <- concat <$> Ne.readTrees teiPath
+    fs <- concat <$> Ne.readTrees [] teiPath
     forM_ fs $ \ts ->
         L.putStrLn . L.strip . showLeaves . getLeaves $ ts
   where

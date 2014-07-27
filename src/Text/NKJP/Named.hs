@@ -39,7 +39,8 @@ import qualified Data.Named.Graph as Nd
 import qualified Data.Named.Tree as Nd
 
 import           Text.NKJP.Utils
-import qualified Text.NKJP.Tar as Tar
+-- import qualified Text.NKJP.Tar as Tar
+import qualified Text.NKJP.Corpus as C
 import qualified Text.NKJP.Morphosyntax as Mx
 
 -- | A certainty of an annotator.
@@ -276,18 +277,23 @@ parseNamed = -- parseXml namedP
 readNamed :: FilePath -> IO [Para L.Text]
 readNamed namedPath = parseNamed <$> L.readFile namedPath
 
--- | Parse all ann_named.xml files from the NCP .tar.bz2 file.
-readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
-readCorpus = Tar.readCorpus "ann_named" parseNamed
+-- | Parse ann_named.xml files from the NCP corpus.
+-- If the given list of directories is empty, all ann_named.xml
+-- files will be read.
+readCorpus :: [FilePath] -> FilePath -> IO [(FilePath, Maybe [Para L.Text])]
+readCorpus xs = C.readDirs xs "ann_named.xml" parseNamed
 
--- | Parse the NCP .tar.bz2 corpus, extract all NEs and translate them
--- to the tree form using the 'mkForest' function.
---
--- Division into paragraphas is preserved.
-readTrees :: FilePath -> IO [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
-readTrees path = do
-    morph <- Mx.readCorpus path
-    named <- readCorpus path
+-- | Parse the given directories from the NCP corpus, extract all NEs
+-- and translate them to the tree form using the 'mkForest' function.
+-- If the given list of directories is empty, all ann_named.xml
+-- files will be read.
+readTrees
+    :: [FilePath]       -- ^ List of directories to process
+    -> FilePath         -- ^ Corpus
+    -> IO [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
+readTrees elems path = do
+    morph <- Mx.readCorpus elems path
+    named <- readCorpus elems path
     return $ map toTrees (sync morph named)
   where
     toTrees (_, xs, ys) = map toForest $ zip

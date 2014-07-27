@@ -25,7 +25,7 @@ orth = L.toStrict . L.concat . map Mx.orth
 main :: IO ()
 main = do
     [teiPath] <- getArgs
-    fs <- concat <$> Ne.readTrees teiPath
+    fs <- concat <$> Ne.readTrees [] teiPath
     forM_ fs $ \ts ->
         L.putStrLn . showForest . prepare $ ts
   where

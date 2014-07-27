@@ -26,7 +26,8 @@ import qualified Data.Text.Lazy.IO as L
 import qualified Text.HTML.TagSoup as TagSoup
 import           Text.XML.PolySoup hiding (P, Q)
 
-import qualified Text.NKJP.Tar as Tar
+-- import qualified Text.NKJP.Tar as Tar
+import qualified Text.NKJP.Corpus as C
 import           Text.NKJP.Utils
 
 
@@ -116,9 +117,11 @@ parseMorph =
 readMorph :: FilePath -> IO [Para L.Text]
 readMorph morphPath = parseMorph <$> L.readFile morphPath
 
--- | Parse all ann_morphosyntax.xml files from the NCP .tar.bz2 file.
-readCorpus :: FilePath -> IO [(FilePath, Maybe [Para L.Text])]
-readCorpus = Tar.readCorpus "ann_morphosyntax" parseMorph
+-- | Parse ann_morphosyntax.xml files from the NCP corpus.
+-- If the given list of directories is empty, all ann_morphosyntax.xml
+-- files will be read.
+readCorpus :: [FilePath] -> FilePath -> IO [(FilePath, Maybe [Para L.Text])]
+readCorpus xs = C.readDirs xs "ann_morphosyntax.xml" parseMorph
 
 
 

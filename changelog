@@ -2,3 +2,5 @@
 
 0.5.0	Jul 2014
 	* Preserve division into paragraphs in `Named.readTrees` output
+	* Allow reading selected directories
+	* Read only unpacked NCP corpus (for simplicity)
