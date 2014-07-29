@@ -31,12 +31,7 @@ readCorpus
     -> IO [(FilePath, Maybe a)]
 readCorpus elemName procElem corPath = do
     paths <- listCor corPath 
-    LazyIO.forM paths $ \path -> do
-        let filePath = path </> elemName
-        b <- Dir.doesFileExist filePath
-        if b
-            then (filePath,) . Just . procElem <$> L.readFile filePath
-            else return (filePath, Nothing)
+    doRead paths elemName procElem corPath
 
 
 -- | Like `readCorpus`, but reads specified directories.
@@ -46,8 +41,18 @@ readDirs
     -> (L.Text -> a)    -- ^ Processing function
     -> FilePath         -- ^ Corpus directory
     -> IO [(FilePath, Maybe a)]
-readDirs [] elemName procElem corPath = readCorpus elemName procElem corPath
-readDirs paths elemName procElem corPath = do
+readDirs [] = readCorpus
+readDirs xs = doRead xs
+
+
+-- | The function which actually does the reading.
+doRead
+    :: [FilePath]       -- ^ Directories to read
+    -> FilePath         -- ^ Element name, e.g. "ann_morphosyntax.xml"
+    -> (L.Text -> a)    -- ^ Processing function
+    -> FilePath         -- ^ Corpus directory
+    -> IO [(FilePath, Maybe a)]
+doRead paths elemName procElem corPath = do
     LazyIO.forM paths $ \path -> do
         let filePath = corPath </> path </> elemName
         b <- Dir.doesFileExist filePath
