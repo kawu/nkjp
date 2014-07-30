@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveFunctor #-}
 
@@ -10,6 +12,7 @@ module Text.NKJP.Morphosyntax
 , Sent (..)
 , Seg (..)
 , Lex (..)
+, chosen
 
 -- * Parsing
 , parseMorph
@@ -20,6 +23,7 @@ module Text.NKJP.Morphosyntax
 import           Control.Applicative
 import qualified Data.Foldable as F
 import           Data.Maybe (isJust)
+import           Data.List (find)
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
 
@@ -54,6 +58,7 @@ data Seg t = Seg
     , orth      :: t
     , nps       :: Bool
     , lexs      :: [Lex t]
+    -- | The first element is a pointer.
     , choice    :: (t, t) }
     deriving (Show, Functor)
 
@@ -62,8 +67,33 @@ data Lex t = Lex
     { lexID     :: t
     , base      :: t
     , ctag      :: t
+    -- | First elements are identifiers.
     , msds      :: [(t, t)] }
     deriving (Show, Functor)
+
+
+-- | Determine the disambiguated base form, class tag and MSD tag.
+chosen :: Eq t => Seg t -> (t, t, t)
+chosen Seg{..} =
+    let (Lex{..}, msd) = findLex (fst choice) lexs
+    in  (base, ctag, msd)
+
+
+-- | Find `Lex` with the given MSD pointer.
+-- The second argument returned is the target MSD.
+findLex :: Eq t => t -> [Lex t] -> (Lex t, t)
+findLex ptr =
+    unJust . foldl (<|>) Nothing . map ddRef
+  where
+    ddRef x = (x,) <$> deRef ptr x
+    unJust (Just x) = x
+    unJust Nothing  = error $
+        "NKJP.Morphosyntax.findLex: no lexical element with the given ID"
+
+
+-- | Dereference the given MSD pointer.
+deRef :: Eq t => t -> Lex t -> Maybe t
+deRef x = fmap snd . find ((==x) . fst) . msds
 
 
 -------------------------------------------------
