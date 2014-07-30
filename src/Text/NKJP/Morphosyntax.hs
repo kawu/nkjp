@@ -73,7 +73,7 @@ data Lex t = Lex
 
 
 -- | Determine the disambiguated base form, class tag and MSD tag.
-chosen :: Eq t => Seg t -> (t, t, t)
+chosen :: (Show t, Eq t) => Seg t -> (t, t, t)
 chosen Seg{..} =
     let (Lex{..}, msd) = findLex (fst choice) lexs
     in  (base, ctag, msd)
@@ -81,15 +81,15 @@ chosen Seg{..} =
 
 -- | Find `Lex` with the given MSD pointer.
 -- The second argument returned is the target MSD.
-findLex :: Eq t => t -> [Lex t] -> (Lex t, t)
+findLex :: (Show t, Eq t) => t -> [Lex t] -> (Lex t, t)
 findLex ptr =
     unJust . foldl (<|>) Nothing . map ddRef
   where
     ddRef x = (x,) <$> deRef ptr x
     unJust (Just x) = x
-    unJust Nothing  = error $
-        "NKJP.Morphosyntax.findLex: no lexical element with the given ID"
-
+    unJust Nothing  = error $ concat
+        [ "NKJP.Morphosyntax.findLex: no lexical element with the ID = "
+        , show ptr ]
 
 -- | Dereference the given MSD pointer.
 deRef :: Eq t => t -> Lex t -> Maybe t
