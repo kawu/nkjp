@@ -121,7 +121,7 @@ smQ _segID = (named "fs" *> hasAttrVal "type" "morph") `joinR` ( Seg
     <$> pure _segID
     <*> first (fStrQ "orth")
     <*> (isJust <$> optional (first $ node $ hasAttrVal "name" "nps"))
-    <*> first (hasAttrVal "name" "interps" /> lexQ)
+    <*> first (hasAttrVal "name" "interps" //> lexQ)
     <*> first choiceQ )
 
 lexQ :: Q (Lex L.Text)
