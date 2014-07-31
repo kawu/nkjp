@@ -35,7 +35,8 @@ library
       , lazy-io             >= 0.1      && < 0.2
 
     exposed-modules:
-        Text.NKJP.Morphosyntax
+        Text.NKJP.Ptr
+      , Text.NKJP.Morphosyntax
       , Text.NKJP.Named
 
     other-modules:

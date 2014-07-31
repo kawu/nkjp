@@ -28,10 +28,12 @@ import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.IO as L
 
 import qualified Text.HTML.TagSoup as TagSoup
+-- import qualified Text.XML.PolySoup as PolySoup
 import           Text.XML.PolySoup hiding (P, Q)
 
 -- import qualified Text.NKJP.Tar as Tar
 import qualified Text.NKJP.Corpus as C
+import           Text.NKJP.Ptr
 import           Text.NKJP.Utils
 
 
@@ -43,18 +45,21 @@ import           Text.NKJP.Utils
 -- | A paragraph.
 data Para t = Para
     { paraID    :: t
+    , paraPtr   :: Ptr t
     , sentences :: [Sent t] }
     deriving (Show, Functor)
 
 -- | A sentence.
 data Sent t = Sent
     { sentID    :: t
+    , sentPtr   :: Ptr t
     , segments  :: [Seg t] }
     deriving (Show, Functor)
 
 -- | A segment.
 data Seg t = Seg
-    { segID     :: t 
+    { segID     ::  t 
+    , segPtr    :: Ptr t
     , orth      :: t
     , nps       :: Bool
     , lexs      :: [Lex t]
@@ -108,17 +113,28 @@ morphQ :: Q [Para L.Text]
 morphQ = true //> paraQ
 
 paraQ :: Q (Para L.Text)
-paraQ = uncurry Para <$> (named "p" *> attr "xml:id" </> sentQ)
+paraQ =
+    let mkPara ((crp, xid), xs) = Para
+            { paraID    = xid
+            , paraPtr   = crp
+            , sentences = xs }
+    in  mkPara <$> (named "p" *> idesQ </> sentQ)
 
 sentQ :: Q (Sent L.Text)
-sentQ = uncurry Sent <$> (named "s" *> attr "xml:id" </> segQ)
+sentQ =
+    let mkSent ((crp, xid), xs) = Sent
+            { sentID    = xid
+            , sentPtr   = crp
+            , segments  = xs }
+    in  mkSent <$> (named "s" *> idesQ </> segQ)
 
 segQ :: Q (Seg L.Text)
-segQ = (named "seg" *> attr "xml:id") `join` (first . smQ)
+segQ =  (named "seg" *> idesQ) `join` (first . smQ)
 
-smQ :: L.Text -> Q (Seg L.Text)
-smQ _segID = (named "fs" *> hasAttrVal "type" "morph") `joinR` ( Seg
+smQ :: (Ptr L.Text, L.Text) -> Q (Seg L.Text)
+smQ (_corresp, _segID) = (named "fs" *> hasAttrVal "type" "morph") `joinR` ( Seg
     <$> pure _segID
+    <*> pure _corresp
     <*> first (fStrQ "orth")
     <*> (isJust <$> optional (first $ node $ hasAttrVal "name" "nps"))
     <*> first (hasAttrVal "name" "interps" //> lexQ)

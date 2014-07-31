@@ -8,7 +8,6 @@ module Text.NKJP.Named
 (
 -- * Data types
   Cert (..)
-, Ptr (..)
 , Deriv (..)
 , Para (..)
 , Sent (..)
@@ -38,6 +37,7 @@ import           Text.XML.PolySoup hiding (P, Q)
 import qualified Data.Named.Graph as Nd
 import qualified Data.Named.Tree as Nd
 
+import           Text.NKJP.Ptr
 import           Text.NKJP.Utils
 -- import qualified Text.NKJP.Tar as Tar
 import qualified Text.NKJP.Corpus as C
@@ -50,17 +50,6 @@ data Cert
     | Low
     deriving (Show)
 
--- | A pointer.
-data Ptr t
-    -- | Of #target form.
-    = Local
-        { target    :: t }
-    -- | Of location#target form.
-    | Global
-        { target    :: t
-        , location  :: t }
-    deriving (Show, Functor)
-
 -- | A derivation structure.
 data Deriv t = Deriv
     { derivType :: t 
@@ -70,12 +59,14 @@ data Deriv t = Deriv
 -- | A paragraph.
 data Para t = Para
     { paraID    :: t
+    , paraPtr   :: Ptr t
     , sentences :: [Sent t] }
     deriving (Show, Functor)
 
 -- | A sentence.
 data Sent t = Sent
     { sentID    :: t
+    , sentPtr   :: Ptr t
     , names     :: [NE t] }
     deriving (Show, Functor)
 
@@ -139,10 +130,20 @@ namedQ :: Q [Para L.Text]
 namedQ = true //> paraQ
 
 paraQ :: Q (Para L.Text)
-paraQ = uncurry Para <$> (named "p" *> attr "xml:id" </> sentQ)
+paraQ = -- uncurry Para <$> (named "p" *> attr "xml:id" </> sentQ)
+    let mkPara ((crp, xid), xs) = Para
+            { paraID    = xid
+            , paraPtr   = crp
+            , sentences = xs }
+    in  mkPara <$> (named "p" *> idesQ </> sentQ)
 
 sentQ :: Q (Sent L.Text)
-sentQ = uncurry Sent <$> (named "s" *> attr "xml:id" </> nameQ)
+sentQ = -- uncurry Sent <$> (named "s" *> attr "xml:id" </> nameQ)
+    let mkSent ((crp, xid), xs) = Sent
+            { sentID    = xid
+            , sentPtr   = crp
+            , names     = xs }
+    in  mkSent <$> (named "s" *> idesQ </> nameQ)
 
 nameQ :: Q (NE L.Text)
 nameQ = (named "seg" *> attr "xml:id") `join` \_neID -> do
@@ -188,14 +189,7 @@ certQ =
     mkCert _        = Medium    -- It should not happen!
 
 namePtrQ :: Q (Ptr L.Text)
-namePtrQ =
-    mkPtr <$> node (named "ptr" *> attr "target")
-  where
-    mkPtr x = case L.break (=='#') x of
-        (ptr, "")   -> Local ptr
-        (loc, ptr)  -> Global
-            { location = loc
-            , target = (L.tail ptr) }
+namePtrQ = readPtr <$> node (named "ptr" *> attr "target")
 
 -----------------------------------
 -- BACKUP

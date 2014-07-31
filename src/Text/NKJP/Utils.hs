@@ -6,13 +6,17 @@ module Text.NKJP.Utils
 ( P, Q
 , fStrQ
 , fSymQ
+, idesQ
 ) where
 
 import           Control.Applicative
 import qualified Data.Text.Lazy as L
 
+import qualified Text.HTML.TagSoup as S
 import           Text.XML.PolySoup hiding (P, Q)
 import qualified Text.XML.PolySoup as P
+
+import           Text.NKJP.Ptr
 
 -- | TEI NKJP parsing predicates.
 type P a = P.P (XmlTree L.Text) a
@@ -34,3 +38,10 @@ fSymQ x =
         safeHead [] = error "fSymQ: empty head"
         safeHead (z:_) = z
     in  safeHead <$> (checkName /> node p)
+
+-- | Identifier and corresp.
+idesQ :: P.Q (S.Tag L.Text) (Ptr L.Text, L.Text)
+idesQ = (,)
+    <$> (readPtr <$> attr "corresp")
+    <*> attr "xml:id"
+
