@@ -7,6 +7,7 @@ module Text.NKJP.Utils
 , fStrQ
 , fSymQ
 , idesQ
+, idesQ'
 ) where
 
 import           Control.Applicative
@@ -45,3 +46,9 @@ idesQ = (,)
     <$> (readPtr <$> attr "corresp")
     <*> attr "xml:id"
 
+
+-- | Identifier and corresp.  A provisional function.
+idesQ' :: P.Q (S.Tag L.Text) (Maybe (Ptr L.Text), L.Text)
+idesQ' = (,)
+    <$> (optional (readPtr <$> attr "corresp"))
+    <*> attr "xml:id"

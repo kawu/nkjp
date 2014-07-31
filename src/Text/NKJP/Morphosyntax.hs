@@ -45,7 +45,8 @@ import           Text.NKJP.Utils
 -- | A paragraph.
 data Para t = Para
     { paraID    :: t
-    , paraPtr   :: Ptr t
+    -- | `Maybe` for compatibility with the entire corpus. 
+    , paraPtr   :: Maybe (Ptr t)
     , sentences :: [Sent t] }
     deriving (Show, Functor)
 
@@ -118,7 +119,7 @@ paraQ =
             { paraID    = xid
             , paraPtr   = crp
             , sentences = xs }
-    in  mkPara <$> (named "p" *> idesQ </> sentQ)
+    in  mkPara <$> (named "p" *> idesQ' </> sentQ)
 
 sentQ :: Q (Sent L.Text)
 sentQ =
