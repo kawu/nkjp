@@ -52,7 +52,7 @@ data Cert
 
 -- | A derivation structure.
 data Deriv t = Deriv
-    { derivType :: t 
+    { derivType :: t
     , derivFrom :: t }
     deriving (Show, Functor)
 
@@ -70,7 +70,7 @@ data Sent t = Sent
     , names     :: [NE t] }
     deriving (Show, Functor)
 
--- | A segment element in a file. 
+-- | A segment element in a file.
 data NE t = NE
     { neID          :: t
     , derived       :: Maybe (Deriv t)
@@ -197,23 +197,23 @@ namePtrQ = readPtr <$> node (named "ptr" *> attr "target")
 --
 -- -- | TEI NKJP ann_morphosyntax parser.
 -- type P a = XmlParser L.Text a
--- 
+--
 -- namedP :: P [Para L.Text]
 -- namedP = true //> paraP
--- 
+--
 -- paraP :: P (Para L.Text)
 -- paraP = uncurry Para <$> (tag "p" *> getAttr "xml:id" </> sentP)
--- 
+--
 -- sentP :: P (Sent L.Text)
 -- sentP = uncurry Sent <$> (tag "s" *> getAttr "xml:id" </> nameP)
--- 
+--
 -- nameP :: P (NE L.Text)
 -- nameP = (tag "seg" *> getAttr "xml:id") `join` \_neID -> do
 --     ne <- nameBodyP
 --     _ptrs <- some namePtrP
 --          <|> failBad ("no targets specified for " ++ L.unpack _neID)
 --     return $ ne { neID = _neID, ptrs = _ptrs }
--- 
+--
 -- nameBodyP :: P (NE L.Text)
 -- nameBodyP = (tag "fs" *> hasAttr "type" "named") `joinR` do
 --     _deriv   <- optional derivP
@@ -227,17 +227,17 @@ namePtrQ = readPtr <$> node (named "ptr" *> attr "target")
 --     return $ NE { neType = _neType, subType = _subType, orth = _orth
 --                 , base = _base, derived = _deriv, cert = _cert
 --                 , certComment = _certComment, neID = "", ptrs = [] }
--- 
+--
 -- derivP :: P (Deriv L.Text)
 -- derivP = fP "derived" `joinR` ( fsP "derivation" `joinR` do
 --     Deriv <$> fSymP "derivType" <*> fStrP "derivedFrom" )
---     
+--
 -- fP :: L.Text -> TagPred L.Text ()
 -- fP x  = tag "f"  *> hasAttr "name" x
--- 
+--
 -- fsP :: L.Text -> TagPred L.Text ()
 -- fsP x = tag "fs" *> hasAttr "type" x
--- 
+--
 -- certP :: P Cert
 -- certP =
 --     mkCert <$> fSymP "certainty"
@@ -246,7 +246,7 @@ namePtrQ = readPtr <$> node (named "ptr" *> attr "target")
 --     mkCert "medium" = Medium
 --     mkCert "low"    = Low
 --     mkCert _        = Medium    -- It should not happen!
--- 
+--
 -- namePtrP :: P (Ptr L.Text)
 -- namePtrP = cut (tag "ptr" *> getAttr "target") >>= \x -> return $
 --     case L.break (=='#') x of
@@ -254,7 +254,7 @@ namePtrQ = readPtr <$> node (named "ptr" *> attr "target")
 --         (loc, ptr)  -> Global
 --             { location = loc
 --             , target = (L.tail ptr) }
--- 
+--
 
 
 -----------------------------------
@@ -277,23 +277,58 @@ readNamed namedPath = parseNamed <$> L.readFile namedPath
 readCorpus :: [FilePath] -> FilePath -> IO [(FilePath, Maybe [Para L.Text])]
 readCorpus xs = C.readDirs xs "ann_named.xml" parseNamed
 
--- | Parse the given directories from the NCP corpus, extract all NEs
--- and translate them to the tree form using the 'mkForest' function.
--- If the given list of directories is empty, all ann_named.xml
--- files will be read.
+-- | Parse the given directories from the NCP corpus, extract all NEs and
+-- translate them to the tree form using the 'mkForest' function. If the given
+-- list of directories is empty, all ann_named.xml files will be read.
+--
+-- The output has one forest (i) for each file, (ii) for each paragraph, and
+-- (iii) for each sentence.
 readTrees
     :: [FilePath]       -- ^ List of directories to process
     -> FilePath         -- ^ Corpus
-    -> IO [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
+    -> IO [[[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]]
 readTrees elems path = do
     morph <- Mx.readCorpus elems path
     named <- readCorpus elems path
-    return $ map toTrees (sync morph named)
+    return $ map toTrees' (sync morph named)
   where
-    toTrees (_, xs, ys) = map toForest $ zip
-        (concatMap Mx.sentences xs)
-        (concatMap sentences ys)
-    toForest (x, y) = mkForest (Mx.segments x) (names y)
+    toTrees'
+      :: (FilePath, [Mx.Para L.Text], [Para L.Text])
+      -> [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
+    toTrees' (_, xs, ys) = map toTrees $ zip xs ys
+    toTrees
+      :: (Mx.Para L.Text, Para L.Text)
+      -> [Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]
+    toTrees (parX, parY) = map toForest $ zip
+        (Mx.sentences parX)
+        (sentences parY)
+    toForest (sentX, sentY) = mkForest (Mx.segments sentX) (names sentY)
+
+-- -- | Parse the given directories from the NCP corpus, extract all NEs
+-- -- and translate them to the tree form using the 'mkForest' function.
+-- -- If the given list of directories is empty, all ann_named.xml
+-- -- files will be read.
+-- --
+-- -- The output has one forest (i) for each file, (ii) for each paragraph, and
+-- -- (iii) for each sentence.
+-- readTrees
+--     :: [FilePath]       -- ^ List of directories to process
+--     -> FilePath         -- ^ Corpus
+--     -- -> IO [[[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]]
+--     -> IO [[Nd.NeForest (NE L.Text) (Mx.Seg L.Text)]]
+-- readTrees elems path = do
+--     morph <- Mx.readCorpus elems path
+--     named <- readCorpus elems path
+--     return $ map toTrees (sync morph named)
+--   where
+--     -- toTrees' (_, xs, ys) = map toTrees $ zip xs ys
+--     -- toTrees' :: [(FilePath, a, b)]
+--     toTrees (parx, pary) = map toForest $ zip
+--         (concatMap Mx.sentences parx)
+--         (concatMap sentences pary)
+--         -- (map Mx.sentences parx)
+--         -- (map sentences pary)
+--     toForest (x, y) = mkForest (Mx.segments x) (names y)
 
 sync :: [(FilePath, Maybe a)] -> [(FilePath, Maybe b)] -> [(FilePath, a, b)]
 sync as bs =

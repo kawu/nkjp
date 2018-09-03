@@ -13,9 +13,9 @@ import qualified Text.NKJP.Morphosyntax as Mx
 main :: IO ()
 main = do
     [teiPath] <- getArgs
-    fs <- concat <$> Ne.readTrees [] teiPath
-    forM_ fs $ \ts ->
-        L.putStrLn . L.strip . showLeaves . getLeaves $ ts
+    pars <- concat <$> Ne.readTrees [] teiPath
+    forM_ pars $ \par ->
+        L.putStrLn . L.strip . showLeaves . getLeaves . concat $ par
   where
     getLeaves  = concatMap (foldMap getRight)
     showLeaves = L.concat . map showLeaf

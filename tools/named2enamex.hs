@@ -13,6 +13,11 @@ import Text.Named.Enamex (showForest)
 import qualified Text.NKJP.Named as Ne
 import qualified Text.NKJP.Morphosyntax as Mx
 
+-- | A hard-coded flag: print one paragraph per line (`True`) or one sentence
+-- per line (`False`)?
+byPar :: Bool
+byPar = True
+
 neType :: Ne.NE L.Text -> T.Text
 neType ne = L.toStrict . L.intercalate "." . catMaybes . map ($ ne) $
     [ Just . Ne.neType
@@ -25,9 +30,14 @@ orth = L.toStrict . L.concat . map Mx.orth
 main :: IO ()
 main = do
     [teiPath] <- getArgs
-    fs <- concat <$> Ne.readTrees [] teiPath
-    forM_ fs $ \ts ->
-        L.putStrLn . showForest . prepare $ ts
+    pars <- concat <$> Ne.readTrees [] teiPath
+    -- below, each paragraph is a list of forests
+    forM_ pars $ \fs ->
+      if byPar
+      then L.putStrLn . showForest . prepare . concat $ fs
+      else do
+          forM_ fs $ \ts ->
+              L.putStrLn . showForest . prepare $ ts
   where
     prepare
         = mapForest (onEither neType orth)
